@@ -11,14 +11,14 @@
   * torch-sparse 0.6
 
 ## Instructions
-Step 1: Install required packages
+### Step 1: Install required packages
 ```
 conda create -n traci
 conda activate traci
 pip install -r requirements.txt
 ```
 
-Step 2: Run the script
+### Step 2: Run the script
 ```
 python run.py --experiment citation_or_protein --gpu your_gpu_id --method traci --source-names the_list_of_source_names --target-name the_target_name
 ```
