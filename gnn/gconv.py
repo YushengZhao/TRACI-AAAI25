@@ -1,14 +1,6 @@
 import torch_geometric.nn as gnn
 
 
-class SAGEConvolution(gnn.SAGEConv):
-    def __init__(self, args, in_channel, out_channel, **kwargs):
-        super(SAGEConvolution, self).__init__(in_channel, out_channel)
-
-    def forward(self, x, edge_index, cache_name, edge_weight):
-        return super(SAGEConvolution, self).forward(x, edge_index)
-
-
 class GINConvolution(gnn.GINConv):
     def __init__(self, args, in_channel, out_channel, **kwargs):
         super(GINConvolution, self).__init__(
@@ -25,16 +17,6 @@ class GATConvolution(gnn.GATConv):
         
     def forward(self, x, edge_index, cache_name, edge_weight):
         return super(GATConvolution, self).forward(x, edge_index, edge_weight)
-
-
-class APPNPConvolution(gnn.APPNP):
-    def __init__(self, encoder):
-        super(APPNPConvolution, self).__init__(2, 0.1)
-        self.encoder = encoder
-
-    def forward(self, x, edge_index, cache_name, edge_weight):
-        x = self.encoder(x)
-        return super(APPNPConvolution, self).forward(x, edge_index, edge_weight)
 
 
 class SGConvolution(gnn.SGConv):

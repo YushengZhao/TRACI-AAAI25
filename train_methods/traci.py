@@ -83,6 +83,7 @@ class Trainer:
                 loss_entropy = torch.sum(probs * torch.log(probs), dim=-1).mean()
                 loss_smoothness_input = compute_smoothness(aug_graph.lap, input_noise) / aug_graph.num_nodes
                 loss_smoothness_hidden = compute_smoothness(aug_graph.lap, hidden_noise) / aug_graph.num_nodes
+                # adversarial loss in Eq. 2
                 adv_loss = loss_entropy \
                            - loss_smoothness_input * args.input_smooth_loss \
                            - loss_smoothness_hidden * args.hidden_smooth_loss
@@ -132,6 +133,7 @@ class Trainer:
                 augmentation = torch.zeros((node_number, args.hidden_dim), device=args.device)
                 domain_dist = domain_dirichlet.sample((node_number,))
 
+                # prototypical mixup
                 labels = source_graphs[i].y
                 for cls in range(args.num_classes):
                     if args.experiment == 'citation':
