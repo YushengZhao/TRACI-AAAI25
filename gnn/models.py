@@ -22,14 +22,10 @@ class GNN(torch.nn.Module):
 
         if type == 'gcn':
             model_cls = CachedGCNConv
-        elif type == 'sage':
-            model_cls = SAGEConvolution
         elif type == 'gin':
             model_cls = GINConvolution
         elif type == 'gat':
             model_cls = GATConvolution
-        elif type == 'appnp':
-            model_cls = APPNPConvolution
         elif type == 'sgc':
             model_cls = SGConvolution
         elif type == 'egc':
@@ -37,7 +33,7 @@ class GNN(torch.nn.Module):
         else:
             model_cls = None
 
-        if type in ['ppmi', 'gcn', 'sage', 'gin', 'gat', 'egc']:
+        if type in ['gcn', 'gin', 'gat', 'egc']:
             self.conv_layers = nn.ModuleList([
                 model_cls(args, args.num_input_feat, args.hidden_dim,
                           weight=weights[0],
@@ -48,35 +44,31 @@ class GNN(torch.nn.Module):
                           bias=biases[1],
                           **kwargs)
             ])
-        elif type == 'appnp':
-            self.conv_layers = nn.ModuleList([
-                APPNPConvolution(gnn.MLP([args.num_input_feat, args.hidden_dim, args.encoder_dim]))
-            ])
         elif type == 'sgc':
             self.conv_layers = nn.ModuleList([
                 SGConvolution(args.num_input_feat, args.encoder_dim)
             ])
 
     def forward(self, x, edge_index, cache_name, edge_weight=None, hidden_noise=None,
-                # args for prototype computation
                 compute_prototype=False, graph=None, prototype_aug=None):
+        # prototypical mixup, Eq. 7 & 8 & 9
         for i, conv_layer in enumerate(self.conv_layers):
             x = conv_layer(x, edge_index, cache_name, edge_weight)
             x = F.relu(x)
             x = self.dropout_layers[i](x)
             if i == 0:
                 if compute_prototype:
-                    prototypes_mean = torch.zeros((self.args.num_classes, x.size(-1)), device=self.args.device)  # Nc x D
+                    prototypes_mean = torch.zeros((self.args.num_classes, x.size(-1)), device=self.args.device)
                     prototypes_std = torch.zeros_like(prototypes_mean)
                     if self.args.experiment == 'citation':
-                        labels = graph.y  # N x Nc
+                        labels = graph.y 
                         for cls in range(self.args.num_classes):
                             mask = (labels[:, cls] > 0)
                             if mask.int().sum() > 0:
                                 cls_feat = x[mask, :]
                                 prototypes_mean[cls, :] = cls_feat.mean(dim=0)
                                 prototypes_std[cls, :] = cls_feat.std(dim=0)
-                    elif self.args.experiment in ['protein', 'twitch']:
+                    elif self.args.experiment == 'protein':
                         labels = graph.y
                         for cls in range(self.args.num_classes):
                             mask = (labels == cls)

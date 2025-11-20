@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from gnn.utils import Buffer, get_normalized_lap
 
 
-class TraciTrainer:
+class Trainer:
     def __init__(self, args, GNNcls=GNN):
         self.args = args
         self.device = args.device
@@ -67,6 +67,7 @@ class TraciTrainer:
             max_iters = ((epoch - args.warmup_epochs) * args.adv_max_iters) // (args.epochs - args.warmup_epochs) + 1
         else:
             max_iters = 0
+        # topological adversarial learning Eq. 1 & 4
         for graph in source_graphs:
             aug_graph = graph_augmentation(graph)
             input_noise = torch.rand_like(aug_graph.x) * args.input_init_pert * 2 - args.input_init_pert
@@ -135,14 +136,14 @@ class TraciTrainer:
                 for cls in range(args.num_classes):
                     if args.experiment == 'citation':
                         mask = (labels[:, cls] > 0)
-                    elif args.experiment in ['protein', 'twitch']:
+                    elif args.experiment == 'protein':
                         mask = (labels == cls)
                     else:
                         raise ValueError("Unknown experiment")
                     gaussian = torch.randn((node_number, domain_number, args.hidden_dim),
-                                           device=args.device)  # N x Nd x D
+                                           device=args.device)
                     gaussian = gaussian * aug_std[:, cls, :] + aug_mean[:, cls, :]
-                    gaussian = (gaussian * domain_dist.unsqueeze(-1)).sum(dim=1)  # N x D
+                    gaussian = (gaussian * domain_dist.unsqueeze(-1)).sum(dim=1)
                     gaussian = gaussian * mask.float().unsqueeze(-1)
                     augmentation = augmentation + gaussian
                 pt_aug_feat = encode(source_graphs[i], None, prototype_aug=augmentation)

@@ -1,46 +1,18 @@
 # coding=utf-8
-from argparse import ArgumentParser
-
 import numpy as np
 import setproctitle
+import importlib
 from loguru import logger
 
-from gnn.dataset.citation import load_citation_network
-from gnn.dataset.protein import load_protein_networks
 from gnn.utils import *
-from train_methods.traci import TraciTrainer
 
-parser = ArgumentParser()
-parser.add_argument("--encoder_dim", type=int)
-parser.add_argument("--hidden_dim", type=int)
-parser.add_argument("--gconv_type", type=str)
-parser.add_argument("--input_init_pert", type=float)
-parser.add_argument("--hidden_init_pert", type=float)
-parser.add_argument("--input_smooth_loss", type=float)
-parser.add_argument("--hidden_smooth_loss", type=float)
-parser.add_argument("--input_adv_lr", type=float)
-parser.add_argument("--hidden_adv_lr", type=float)
-parser.add_argument("--adv_max_iters", type=int)
-parser.add_argument("--buffer_size", type=int)
-parser.add_argument("--resample", type=int)
-parser.add_argument("--lr", type=float)
-parser.add_argument("--edge_drop_prob", type=float)
-parser.add_argument("--beta_param1", type=float)
-parser.add_argument("--beta_param2", type=float)
-parser.add_argument("--cl_loss_weight", type=float)
-parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--gpu", type=int, default=1)
-parser.add_argument("--epochs", type=int, default=300)
-parser.add_argument("--warmup_epochs", type=int, default=150)
-parser.add_argument("--experiment", type=str, choices=['protein', 'citation'], default='citation')
-parser.add_argument("--method", type=str, choices=['traci'], default='traci')
-
-args = parser.parse_args()
+args = get_args()
 args.device = torch.device('cuda:%d' % args.gpu if torch.cuda.is_available() else 'cpu')
 setproctitle.setproctitle(args.expid)
 device = args.device
 encoder_dim = args.encoder_dim
-
+data_loading_fn = importlib.import_module('gnn.dataset.%s' % args.experiment).load_data
+TrainerClass = importlib.import_module('gnn.trainer.%s' % args.method).Trainer
 
 def set_seed(seed):
     random.seed(seed)
@@ -50,18 +22,14 @@ def set_seed(seed):
 
 
 if args.experiment == 'citation':
-    # acmv9 citationv1 dblpv7
-    source_graphs = [
-        load_citation_network("acmv9", args),
-        load_citation_network("dblpv7", args)
-    ]
-    target_graph = load_citation_network("citationv1", args)
+    source_graphs = [data_loading_fn(name, args) for name in args.source_names]
+    target_graph = data_loading_fn(args.target_name, args)
     args.clf = 'multi'
     args.num_classes = target_graph.y.shape[1]
 elif args.experiment == 'protein':
-    proteins = load_protein_networks(args)
-    target_idx = 2
-    source_idx = [0, 1, 3]
+    proteins = data_loading_fn(args)
+    target_idx = int(args.target_name)
+    source_idx = [int(name) for name in args.source_names]
     target_graph = proteins[target_idx]
     source_graphs = [proteins[i] for i in source_idx]
     args.clf = 'single'
@@ -73,7 +41,7 @@ args.num_input_feat = target_graph.x.shape[1]
 def main():
     args.source_graphs = source_graphs
     args.target_graph = target_graph
-    trainer = TraciTrainer(args)
+    trainer = TrainerClass(args)
 
     for epoch in range(1, args.epochs + 1):
         stats = trainer.train(epoch, source_graphs)

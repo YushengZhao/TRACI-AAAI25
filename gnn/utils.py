@@ -20,7 +20,7 @@ class Buffer:
 
 
 def get_normalized_lap(edge_index, num_nodes):
-    adj = to_dense_adj(edge_index, max_num_nodes=num_nodes)[0]  # N x N
+    adj = to_dense_adj(edge_index, max_num_nodes=num_nodes)[0] 
     adj = ((adj + torch.eye(adj.size(0), device=adj.device)) > 0).float()
     sum_0 = torch.sum(adj, dim=0, keepdim=True)
     sum_1 = torch.sum(adj, dim=1, keepdim=True)
@@ -122,3 +122,34 @@ def ema_update(target_model, source_model, beta=0.99):
     with torch.no_grad():
         for target_param, source_param in zip(target_model.parameters(), source_model.parameters()):
             target_param.data.copy_(beta * target_param.data + (1.0 - beta) * source_param.data)
+
+def get_args():
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument("--encoder_dim", type=int)
+    parser.add_argument("--hidden_dim", type=int)
+    parser.add_argument("--gconv_type", type=str)
+    parser.add_argument("--input_init_pert", type=float)
+    parser.add_argument("--hidden_init_pert", type=float)
+    parser.add_argument("--input_smooth_loss", type=float)
+    parser.add_argument("--hidden_smooth_loss", type=float)
+    parser.add_argument("--input_adv_lr", type=float)
+    parser.add_argument("--hidden_adv_lr", type=float)
+    parser.add_argument("--adv_max_iters", type=int)
+    parser.add_argument("--buffer_size", type=int)
+    parser.add_argument("--resample", type=int)
+    parser.add_argument("--lr", type=float)
+    parser.add_argument("--edge_drop_prob", type=float)
+    parser.add_argument("--beta_param1", type=float)
+    parser.add_argument("--beta_param2", type=float)
+    parser.add_argument("--cl_loss_weight", type=float)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--gpu", type=int, default=1)
+    parser.add_argument("--epochs", type=int, default=300)
+    parser.add_argument("--warmup_epochs", type=int, default=150)
+    parser.add_argument("--experiment", type=str, choices=['protein', 'citation'], default='citation')
+    parser.add_argument("--method", type=str, choices=['traci'], default='traci')
+    parser.add_argument("--source-names", type=str, nargs='+')
+    parser.add_argument("--target-name", type=str)
+
+    args = parser.parse_args()
